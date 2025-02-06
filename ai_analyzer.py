@@ -127,7 +127,7 @@ class AIAnalyzer:
             
             async with openai.AsyncOpenAI() as client:
                 result = await client.chat.completions.create(
-                    model="gpt-3.5-turbo",
+                    model="gpt-4o-mini-2024-07-18",
                     messages=messages,
                     temperature=0.7,
                     max_tokens=1000

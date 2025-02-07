@@ -14,10 +14,13 @@ from PIL import ImageEnhance
 
 app = FastAPI()
 
-# Add CORS middleware
+# Add CORS middleware with specific frontend origin
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "https://frontend-portfolio-aomn.onrender.com",
+        "http://localhost:3000",  # For local development
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -250,6 +253,48 @@ async def analyze_resume(
             status_code=500,
             detail=f"An error occurred while processing the resume: {str(e)}"
         )
+
+@app.post("/analyze")
+async def analyze_cv(
+    cv_file: UploadFile = File(...),
+    job_category: str = Form(...),
+    include_industry_insights: bool = Form(False),
+    include_competitive_analysis: bool = Form(False),
+    detailed_feedback: bool = Form(False)
+):
+    try:
+        # Read and process the CV file
+        content = await cv_file.read()
+        
+        # Extract text based on file type
+        if cv_file.filename.lower().endswith('.pdf'):
+            text = extract_text_from_pdf_with_ocr(content)
+        elif cv_file.filename.lower().endswith('.docx'):
+            doc = Document(io.BytesIO(content))
+            text = '\n'.join([paragraph.text for paragraph in doc.paragraphs])
+        else:
+            raise HTTPException(status_code=400, detail="Unsupported file format. Please upload a PDF or DOCX file.")
+
+        # Initialize AI analyzer
+        analyzer = AIAnalyzer()
+        
+        # Perform analysis
+        analysis_result = analyzer.analyze(
+            text=text,
+            job_category=job_category,
+            include_industry_insights=include_industry_insights,
+            include_competitive_analysis=include_competitive_analysis,
+            detailed_feedback=detailed_feedback
+        )
+
+        return {
+            "status": "success",
+            "analysis": analysis_result
+        }
+
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn

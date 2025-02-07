@@ -14,7 +14,7 @@ services:
       - key: DEEPSEEK_API_KEY
         sync: false  # This means you'll set it in the Render dashboard
       - key: ALLOWED_ORIGINS
-        value: https://frontend-portfolio-aomn.onrender.com/  # Replace with your actual frontend URL
+        value: https://frontend-portfolio-aomn.onrender.com  # Replace with your actual frontend URL
       - key: REDIS_HOST
         value: redis  # This will be updated if using Render's Redis add-on
       - key: REDIS_PORT

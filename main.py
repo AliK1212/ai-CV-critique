@@ -12,6 +12,7 @@ import os
 import io
 import traceback
 from PIL import ImageEnhance
+import logging
 
 app = FastAPI()
 
@@ -308,5 +309,13 @@ async def analyze_cv(
 if __name__ == "__main__":
     import uvicorn
     import os
-    port = int(os.getenv("PORT", 8001))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    
+    # Get port from environment variable
+    port = int(os.getenv("PORT", 10000))
+    
+    # Add debug logging
+    logging.basicConfig(level=logging.DEBUG)
+    logger = logging.getLogger(__name__)
+    logger.debug(f"Starting server on port {port}")
+    
+    uvicorn.run("main:app", host="0.0.0.0", port=port, log_level="debug")

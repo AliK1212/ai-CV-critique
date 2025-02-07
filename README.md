@@ -1,11 +1,11 @@
-# Resume Critique API
+# AI CV Critique
 
-An advanced AI-powered resume analysis service that provides comprehensive feedback, ATS compatibility scoring, and industry-specific recommendations for any job type.
+An advanced AI-powered CV analysis service that provides comprehensive feedback, ATS compatibility scoring, and industry-specific recommendations for any job type.
 
 ## Features
 
 ### 1. AI-Powered Analysis
-- OPENAI integration for deep resume analysis
+- OPENAI integration for deep CV analysis
 - Sophisticated content evaluation
 - Writing style assessment
 - Professional recommendations
@@ -36,7 +36,7 @@ Supports multiple industries including:
 - Legal
 - Sales
 - HR
-(Automatically detects industry from job title and resume content)
+(Automatically detects industry from job title and CV content)
 
 ### 4. ATS Compatibility Analysis
 - Ultra-realistic ATS scoring (0-100)
@@ -117,9 +117,9 @@ Supports multiple industries including:
 
 ## API Endpoints
 
-### 1. Resume Analysis
+### 1. CV Analysis
 ```http
-POST /analyze-resume/
+POST /analyze-cv/
 Content-Type: multipart/form-data
 
 Parameters:
@@ -176,11 +176,11 @@ Returns: List of supported job categories
 ## Architecture
 
 ```
-resume-critique-api/
+cv-critique-api/
 ├── main.py              # FastAPI application & PDF processing
 ├── ai_analyzer.py       # AI integration & analysis
 ├── ats_analyzer.py      # ATS compatibility analysis
-├── resume_parser.py     # Resume parsing & structure analysis
+├── cv_parser.py         # CV parsing & structure analysis
 ├── requirements.txt     # Python dependencies
 ├── Dockerfile          # Container configuration
 └── README.md           # Documentation

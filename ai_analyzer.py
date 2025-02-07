@@ -135,15 +135,18 @@ Please provide detailed feedback with the following requirements:
                 }
             ]
 
-            client = openai.Client()
-            response = await client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=messages,
-                temperature=0.7,
-                max_tokens=2000
-            )
-
-            analysis = json.loads(response.choices[0].message.content)
+            try:
+                completion = await openai.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=messages,
+                    temperature=0.7,
+                    max_tokens=2000
+                )
+                print("OpenAI API Response:", completion)
+                analysis = json.loads(completion.choices[0].message.content)
+            except Exception as e:
+                print(f"OpenAI API Error: {str(e)}")
+                raise ValueError(f"Failed to get analysis from OpenAI: {str(e)}")
 
             # Add ATS analysis if requested
             if detailed_feedback:
@@ -179,15 +182,17 @@ Please provide detailed feedback with the following requirements:
             {"role": "user", "content": f"Provide industry insights for the {job_category} field, including market trends, key skills in demand, salary insights, and growth opportunities."}
         ]
 
-        client = openai.Client()
-        response = await client.chat.completions.create(
-            model="gpt-4",
-            messages=messages,
-            temperature=0.7,
-            max_tokens=1000
-        )
-
-        return json.loads(response.choices[0].message.content)
+        try:
+            completion = await openai.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=messages,
+                temperature=0.7,
+                max_tokens=1000
+            )
+            return json.loads(completion.choices[0].message.content)
+        except Exception as e:
+            print(f"Error getting industry insights: {e}")
+            raise ValueError(f"Failed to get industry insights: {str(e)}")
 
     async def _get_competitive_analysis(self, resume_text: str, job_category: str) -> Dict:
         messages = [
@@ -203,15 +208,17 @@ Provide:
 4. Areas for improvement"""}
         ]
 
-        client = openai.Client()
-        response = await client.chat.completions.create(
-            model="gpt-4",
-            messages=messages,
-            temperature=0.7,
-            max_tokens=1000
-        )
-
-        return json.loads(response.choices[0].message.content)
+        try:
+            completion = await openai.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=messages,
+                temperature=0.7,
+                max_tokens=1000
+            )
+            return json.loads(completion.choices[0].message.content)
+        except Exception as e:
+            print(f"Error getting competitive analysis: {e}")
+            raise ValueError(f"Failed to get competitive analysis: {str(e)}")
 
     def _detect_industry(self, job_title: str, text: str) -> str:
         """Detect the industry based on job title and resume content."""

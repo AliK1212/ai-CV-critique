@@ -8,7 +8,6 @@ from collections import Counter
 from sklearn.feature_extraction.text import TfidfVectorizer
 import numpy as np
 import openai
-import traceback
 from openai import AsyncOpenAI
 
 class AIAnalyzer:
@@ -141,11 +140,10 @@ IMPORTANT: Respond with valid JSON only.
 
             try:
                 response = await self.client.chat.completions.create(
-                    model="gpt-4",  # Using standard GPT-4 for better reliability
+                    model="gpt-4-1106-preview",
                     messages=messages,
                     temperature=0.7,
-                    max_tokens=2000,
-                    response_format={"type": "json_object"}  # Ensure JSON response
+                    max_tokens=2000
                 )
                 
                 # Get the response content
@@ -190,25 +188,26 @@ IMPORTANT: Respond with valid JSON only.
 
     async def _get_industry_insights(self, job_category: str) -> Dict:
         messages = [
-            {"role": "system", "content": "You are an expert in industry analysis and career development."},
-            {"role": "user", "content": f"""Provide industry insights for the {job_category} field, including market trends, key skills in demand, salary insights, and growth opportunities.
-
-IMPORTANT: Respond with valid JSON only, using this structure:
-{{
+            {"role": "system", "content": """You are an expert in industry analysis and career development. Respond with valid JSON only using this structure:
+{
     "trends": ["list of trends"],
     "skills": ["list of skills"],
     "salary_range": "salary information",
     "growth_opportunities": ["list of opportunities"]
-}}"""}
+}"""},
+            {"role": "user", "content": f"""Provide industry insights for the {job_category} field, including market trends, key skills in demand, salary insights, and growth opportunities.
+
+IMPORTANT: Respond with valid JSON only.
+"""
+            }
         ]
 
         try:
             response = await self.client.chat.completions.create(
-                model="gpt-4",
+                model="gpt-4-1106-preview",
                 messages=messages,
                 temperature=0.7,
-                max_tokens=1000,
-                response_format={"type": "json_object"}
+                max_tokens=1000
             )
             return json.loads(response.choices[0].message.content)
         except Exception as e:
@@ -217,27 +216,28 @@ IMPORTANT: Respond with valid JSON only, using this structure:
 
     async def _get_competitive_analysis(self, resume_text: str, job_category: str) -> Dict:
         messages = [
-            {"role": "system", "content": "You are an expert in competitive analysis and career development."},
-            {"role": "user", "content": f"""Analyze this resume for competitive positioning in the {job_category} field:
-
-{resume_text}
-
-IMPORTANT: Respond with valid JSON only, using this structure:
-{{
+            {"role": "system", "content": """You are an expert in competitive analysis and career development. Respond with valid JSON only using this structure:
+{
     "key_strengths": ["list of strengths"],
     "potential_gaps": ["list of gaps"],
     "unique_points": ["list of unique selling points"],
     "improvement_areas": ["list of areas to improve"]
-}}"""}
+}"""},
+            {"role": "user", "content": f"""Analyze this resume for competitive positioning in the {job_category} field:
+
+{resume_text}
+
+IMPORTANT: Respond with valid JSON only.
+"""
+            }
         ]
 
         try:
             response = await self.client.chat.completions.create(
-                model="gpt-4",
+                model="gpt-4-1106-preview",
                 messages=messages,
                 temperature=0.7,
-                max_tokens=1000,
-                response_format={"type": "json_object"}
+                max_tokens=1000
             )
             return json.loads(response.choices[0].message.content)
         except Exception as e:

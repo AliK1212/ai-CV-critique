@@ -17,9 +17,15 @@ import logging
 app = FastAPI()
 
 # Add CORS middleware
+origins = [
+    "https://frontend-portfolio-aomn.onrender.com",
+    "http://localhost:3000",  # For local development
+    "http://localhost:5173"   # For Vite dev server
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://frontend-portfolio-aomn.onrender.com"],  # Only allow the frontend website
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -30,9 +36,9 @@ async def options_route(request: Request):
     return JSONResponse(
         content="OK",
         headers={
-            "Access-Control-Allow-Origin": "https://frontend-portfolio-aomn.onrender.com",
-            "Access-Control-Allow-Methods": "POST, GET, DELETE, OPTIONS",
-            "Access-Control-Allow-Headers": "Content-Type",
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "*",
+            "Access-Control-Allow-Headers": "*",
         }
     )
 
@@ -69,7 +75,11 @@ def extract_text_from_pdf_with_ocr(pdf_content):
 
 @app.get("/")
 async def root():
-    return {"message": "Resume Critique API is running"}
+    return {"message": "CV Critique API is running"}
+
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy"}
 
 @app.get("/supported-jobs")
 async def get_supported_jobs():

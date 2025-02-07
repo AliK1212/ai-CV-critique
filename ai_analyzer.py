@@ -13,11 +13,11 @@ from openai import AsyncOpenAI
 
 class AIAnalyzer:
     def __init__(self):
-        self.client = AsyncOpenAI()
-        openai.api_key = os.getenv("OPENAI_API_KEY")
-        if not openai.api_key:
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
             raise ValueError("OpenAI API key not found in environment variables")
-            
+        self.client = AsyncOpenAI(api_key=api_key)
+        
         self.SYSTEM_MESSAGE = """You are an expert resume analyzer. Analyze the resume and provide detailed feedback in the following JSON structure:
         {
             "basic_analysis": {
@@ -133,19 +133,32 @@ Please provide detailed feedback with the following requirements:
 - Include industry insights: {include_industry_insights}
 - Include competitive analysis: {include_competitive_analysis}
 - Detailed feedback: {detailed_feedback}
+
+IMPORTANT: Respond with valid JSON only.
 """
                 }
             ]
 
             try:
-                completion = await self.client.chat.completions.create(
-                    model="gpt-4o-mini",
+                response = await self.client.chat.completions.create(
+                    model="gpt-4",  # Using standard GPT-4 for better reliability
                     messages=messages,
                     temperature=0.7,
-                    max_tokens=2000
+                    max_tokens=2000,
+                    response_format={"type": "json_object"}  # Ensure JSON response
                 )
-                print("OpenAI API Response:", completion)
-                analysis = json.loads(completion.choices[0].message.content)
+                
+                # Get the response content
+                content = response.choices[0].message.content
+                print("OpenAI API Raw Response:", content)
+                
+                try:
+                    analysis = json.loads(content)
+                except json.JSONDecodeError as e:
+                    print(f"JSON Parse Error: {e}")
+                    print(f"Raw content: {content}")
+                    raise ValueError("Failed to parse OpenAI response as JSON")
+
             except Exception as e:
                 print(f"OpenAI API Error: {str(e)}")
                 raise ValueError(f"Failed to get analysis from OpenAI: {str(e)}")
@@ -170,9 +183,6 @@ Please provide detailed feedback with the following requirements:
 
             return analysis
 
-        except json.JSONDecodeError as e:
-            print(f"Error parsing OpenAI response: {e}")
-            raise ValueError("Failed to parse AI analysis response")
         except Exception as e:
             print(f"Error in analyze_resume method: {e}")
             traceback.print_exc()
@@ -181,17 +191,26 @@ Please provide detailed feedback with the following requirements:
     async def _get_industry_insights(self, job_category: str) -> Dict:
         messages = [
             {"role": "system", "content": "You are an expert in industry analysis and career development."},
-            {"role": "user", "content": f"Provide industry insights for the {job_category} field, including market trends, key skills in demand, salary insights, and growth opportunities."}
+            {"role": "user", "content": f"""Provide industry insights for the {job_category} field, including market trends, key skills in demand, salary insights, and growth opportunities.
+
+IMPORTANT: Respond with valid JSON only, using this structure:
+{{
+    "trends": ["list of trends"],
+    "skills": ["list of skills"],
+    "salary_range": "salary information",
+    "growth_opportunities": ["list of opportunities"]
+}}"""}
         ]
 
         try:
-            completion = await self.client.chat.completions.create(
-                model="gpt-4o-mini",
+            response = await self.client.chat.completions.create(
+                model="gpt-4",
                 messages=messages,
                 temperature=0.7,
-                max_tokens=1000
+                max_tokens=1000,
+                response_format={"type": "json_object"}
             )
-            return json.loads(completion.choices[0].message.content)
+            return json.loads(response.choices[0].message.content)
         except Exception as e:
             print(f"Error getting industry insights: {e}")
             raise ValueError(f"Failed to get industry insights: {str(e)}")
@@ -203,21 +222,24 @@ Please provide detailed feedback with the following requirements:
 
 {resume_text}
 
-Provide:
-1. Key strengths
-2. Potential gaps
-3. Unique selling points
-4. Areas for improvement"""}
+IMPORTANT: Respond with valid JSON only, using this structure:
+{{
+    "key_strengths": ["list of strengths"],
+    "potential_gaps": ["list of gaps"],
+    "unique_points": ["list of unique selling points"],
+    "improvement_areas": ["list of areas to improve"]
+}}"""}
         ]
 
         try:
-            completion = await self.client.chat.completions.create(
-                model="gpt-4o-mini",
+            response = await self.client.chat.completions.create(
+                model="gpt-4",
                 messages=messages,
                 temperature=0.7,
-                max_tokens=1000
+                max_tokens=1000,
+                response_format={"type": "json_object"}
             )
-            return json.loads(completion.choices[0].message.content)
+            return json.loads(response.choices[0].message.content)
         except Exception as e:
             print(f"Error getting competitive analysis: {e}")
             raise ValueError(f"Failed to get competitive analysis: {str(e)}")

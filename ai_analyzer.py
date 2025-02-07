@@ -104,9 +104,11 @@ class AIAnalyzer:
             "project_management": "Project planning, team leadership, risk management"
         }
 
-    async def analyze_resume(self, text: str, job_title: str = None) -> Dict:
-        """Analyze resume text using GPT-4o-mini model and provide comprehensive feedback."""
-        
+    async def analyze_resume(self, text: str, job_title: str = None, 
+                           include_industry_insights: bool = False,
+                           include_competitive_analysis: bool = False,
+                           detailed_feedback: bool = False) -> Dict:
+        """Analyze resume text using GPT-4 model and provide comprehensive feedback."""
         try:
             if not text:
                 raise ValueError("No text provided for analysis")
@@ -121,40 +123,92 @@ class AIAnalyzer:
                 },
                 {
                     "role": "user",
-                    "content": f"Resume text:\n{text}\n\nJob title: {job_title or 'Not specified'}"
+                    "content": f"""Analyze this resume for a {job_title} position:
+
+{text}
+
+Please provide detailed feedback with the following requirements:
+- Include industry insights: {include_industry_insights}
+- Include competitive analysis: {include_competitive_analysis}
+- Detailed feedback: {detailed_feedback}
+"""
                 }
             ]
-            
-            async with openai.AsyncOpenAI() as client:
-                result = await client.chat.completions.create(
-                    model="gpt-4o-mini-2024-07-18",
-                    messages=messages,
-                    temperature=0.7,
-                    max_tokens=1000
-                )
-            
-            response_text = result.choices[0].message.content
-            print(f"Raw response: {response_text}")
-            
-            # Clean the response - remove markdown if present
-            if response_text.startswith("```json"):
-                response_text = response_text[7:]
-            if response_text.endswith("```"):
-                response_text = response_text[:-3]
-                
-            try:
-                analysis = json.loads(response_text.strip())
-                return {
-                    "status": "success",
-                    "analysis": analysis
-                }
-            except json.JSONDecodeError as e:
-                print(f"Error parsing OpenAI response: {str(e)}")
-                raise ValueError(f"Failed to parse AI response: {str(e)}")
-                
+
+            response = await openai.ChatCompletion.acreate(
+                model="gpt-4",
+                messages=messages,
+                temperature=0.7,
+                max_tokens=2000
+            )
+
+            analysis = json.loads(response.choices[0].message.content)
+
+            # Add ATS analysis if requested
+            if detailed_feedback:
+                ats_analyzer = ATSAnalyzer()
+                ats_analysis = ats_analyzer.analyze(text, job_title)
+                if 'ats_analysis' not in analysis:
+                    analysis['ats_analysis'] = {}
+                analysis['ats_analysis'].update(ats_analysis)
+
+            # Add industry insights if requested
+            if include_industry_insights:
+                industry_insights = await self._get_industry_insights(job_title)
+                analysis['industry_insights'] = industry_insights
+
+            # Add competitive analysis if requested
+            if include_competitive_analysis:
+                competitive_analysis = await self._get_competitive_analysis(text, job_title)
+                analysis['competitive_analysis'] = competitive_analysis
+
+            return analysis
+
+        except json.JSONDecodeError as e:
+            print(f"Error parsing OpenAI response: {e}")
+            raise ValueError("Failed to parse AI analysis response")
         except Exception as e:
-            print(f"Error in analyze_resume: {str(e)}")
+            print(f"Error in analyze_resume method: {e}")
+            traceback.print_exc()
             raise
+
+    async def _get_industry_insights(self, job_category: str) -> Dict:
+        messages = [
+            {"role": "system", "content": "You are an expert in industry analysis and career development."},
+            {"role": "user", "content": f"Provide industry insights for the {job_category} field, including market trends, key skills in demand, salary insights, and growth opportunities."}
+        ]
+
+        response = await openai.ChatCompletion.acreate(
+            model="gpt-4",
+            messages=messages,
+            temperature=0.7,
+            max_tokens=1000
+        )
+
+        return json.loads(response.choices[0].message.content)
+
+    async def _get_competitive_analysis(self, resume_text: str, job_category: str) -> Dict:
+        messages = [
+            {"role": "system", "content": "You are an expert in competitive analysis and career development."},
+            {"role": "user", "content": f"""Analyze this resume for competitive positioning in the {job_category} field:
+
+{resume_text}
+
+Provide:
+1. Key strengths
+2. Potential gaps
+3. Unique selling points
+4. Areas for improvement"""}
+        ]
+
+        response = await openai.ChatCompletion.acreate(
+            model="gpt-4",
+            messages=messages,
+            temperature=0.7,
+            max_tokens=1000
+        )
+
+        return json.loads(response.choices[0].message.content)
 
     def _detect_industry(self, job_title: str, text: str) -> str:
         """Detect the industry based on job title and resume content."""

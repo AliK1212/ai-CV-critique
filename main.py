@@ -1,4 +1,4 @@
-from fastapi import FastAPI, File, UploadFile, Form, HTTPException
+from fastapi import FastAPI, File, UploadFile, Form, HTTPException, Request, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 import fitz
 from PyPDF2 import PdfReader
@@ -14,17 +14,25 @@ from PIL import ImageEnhance
 
 app = FastAPI()
 
-# Add CORS middleware with specific frontend origin
+# Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://frontend-portfolio-aomn.onrender.com",
-        "http://localhost:3000",  # For local development
-    ],
+    allow_origins=["https://frontend-portfolio-aomn.onrender.com"],  # Only allow the frontend website
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.options("/{path:path}")
+async def options_route(request: Request):
+    return JSONResponse(
+        content="OK",
+        headers={
+            "Access-Control-Allow-Origin": "https://frontend-portfolio-aomn.onrender.com",
+            "Access-Control-Allow-Methods": "POST, GET, DELETE, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type",
+        }
+    )
 
 from ai_analyzer import AIAnalyzer
 

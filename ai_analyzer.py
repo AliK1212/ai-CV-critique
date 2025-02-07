@@ -9,9 +9,11 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 import numpy as np
 import openai
 import traceback
+from openai import AsyncOpenAI
 
 class AIAnalyzer:
     def __init__(self):
+        self.client = AsyncOpenAI()
         openai.api_key = os.getenv("OPENAI_API_KEY")
         if not openai.api_key:
             raise ValueError("OpenAI API key not found in environment variables")
@@ -136,7 +138,7 @@ Please provide detailed feedback with the following requirements:
             ]
 
             try:
-                completion = await openai.chat.completions.create(
+                completion = await self.client.chat.completions.create(
                     model="gpt-4o-mini",
                     messages=messages,
                     temperature=0.7,
@@ -183,7 +185,7 @@ Please provide detailed feedback with the following requirements:
         ]
 
         try:
-            completion = await openai.chat.completions.create(
+            completion = await self.client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=messages,
                 temperature=0.7,
@@ -209,7 +211,7 @@ Provide:
         ]
 
         try:
-            completion = await openai.chat.completions.create(
+            completion = await self.client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=messages,
                 temperature=0.7,

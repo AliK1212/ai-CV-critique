@@ -13,13 +13,13 @@ import io
 import traceback
 from PIL import ImageEnhance
 import logging
-import openai
+from openai import AsyncOpenAI
 
 app = FastAPI()
 
-# Initialize OpenAI client with API key
-openai.api_key = os.getenv('OPENAI_API_KEY')
-if not openai.api_key:
+# Initialize OpenAI client
+openai_api_key = os.getenv('OPENAI_API_KEY')
+if not openai_api_key:
     raise ValueError("OPENAI_API_KEY environment variable is not set")
 
 # Add CORS middleware

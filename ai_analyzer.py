@@ -135,8 +135,9 @@ Please provide detailed feedback with the following requirements:
                 }
             ]
 
-            response = await openai.ChatCompletion.acreate(
-                model="gpt-4",
+            client = openai.Client()
+            response = await client.chat.completions.create(
+                model="gpt-4o-mini",
                 messages=messages,
                 temperature=0.7,
                 max_tokens=2000
@@ -178,7 +179,8 @@ Please provide detailed feedback with the following requirements:
             {"role": "user", "content": f"Provide industry insights for the {job_category} field, including market trends, key skills in demand, salary insights, and growth opportunities."}
         ]
 
-        response = await openai.ChatCompletion.acreate(
+        client = openai.Client()
+        response = await client.chat.completions.create(
             model="gpt-4",
             messages=messages,
             temperature=0.7,
@@ -201,7 +203,8 @@ Provide:
 4. Areas for improvement"""}
         ]
 
-        response = await openai.ChatCompletion.acreate(
+        client = openai.Client()
+        response = await client.chat.completions.create(
             model="gpt-4",
             messages=messages,
             temperature=0.7,

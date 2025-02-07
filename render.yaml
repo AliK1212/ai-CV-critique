@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: cv-critique-service
+    env: python
+    buildCommand: |
+      apt-get update && apt-get install -y tesseract-ocr poppler-utils
+      pip install -r requirements.txt
+    startCommand: python main.py
+    envVars:
+      - key: PYTHONUNBUFFERED
+        value: true
+      - key: OPENAI_API_KEY
+        sync: false  # This means you'll set it in the Render dashboard
+      - key: DEEPSEEK_API_KEY
+        sync: false  # This means you'll set it in the Render dashboard
+      - key: ALLOWED_ORIGINS
+        value: https://frontend-portfolio-aomn.onrender.com/  # Replace with your actual frontend URL
+      - key: REDIS_HOST
+        value: redis  # This will be updated if using Render's Redis add-on
+      - key: REDIS_PORT
+        value: 6379
+      - key: PORT
+        value: 10000
+    dependencies:
+      - type: redis
+        name: cv-critique-redis
+        ipAllowList: []  # Only allow internal connections

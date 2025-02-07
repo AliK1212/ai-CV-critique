@@ -1,5 +1,6 @@
-from fastapi import FastAPI, File, UploadFile, Form, HTTPException, Request, JSONResponse
+from fastapi import FastAPI, File, UploadFile, Form, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 import fitz
 from PyPDF2 import PdfReader
 import pdfplumber

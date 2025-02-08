@@ -9,6 +9,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 import numpy as np
 import openai
 from openai import AsyncOpenAI
+import traceback
 
 class AIAnalyzer:
     def __init__(self):

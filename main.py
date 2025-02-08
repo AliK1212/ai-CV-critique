@@ -25,16 +25,20 @@ if not openai_api_key:
 # Add CORS middleware
 origins = [
     "https://frontend-portfolio-aomn.onrender.com",
-    "http://localhost:3000",  # For local development
-    "http://localhost:5173"   # For Vite dev server
+    "https://deerk-portfolio.onrender.com",
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "http://localhost:4173"
 ]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
+    expose_headers=["*"],
+    max_age=3600,
 )
 
 @app.options("/{path:path}")
@@ -43,55 +47,76 @@ async def options_route(request: Request):
         content="OK",
         headers={
             "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "*",
+            "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
             "Access-Control-Allow-Headers": "*",
+            "Access-Control-Max-Age": "3600",
         }
     )
 
 from ai_analyzer import AIAnalyzer
 
-def extract_text_from_pdf_with_ocr(pdf_content):
+async def extract_text_from_pdf_with_ocr(pdf_content: bytes) -> str:
     """Extract text from PDF using OCR as a last resort."""
     try:
-        # Convert PDF to images with higher DPI for better quality
-        images = convert_from_bytes(pdf_content, dpi=400)
+        # First try PyMuPDF (fitz)
+        doc = fitz.open(stream=pdf_content, filetype="pdf")
         text = ""
+        for page in doc:
+            text += page.get_text()
+        doc.close()
         
+        if text.strip():
+            return text
+
+        # If no text found, try pdfplumber
+        with pdfplumber.open(io.BytesIO(pdf_content)) as pdf:
+            text = ""
+            for page in pdf.pages:
+                text += page.extract_text() or ""
+            
+            if text.strip():
+                return text
+
+        # If still no text, use OCR
+        images = convert_from_bytes(pdf_content)
+        text = ""
         for image in images:
-            # Enhanced image preprocessing for better OCR
-            img = image.convert('L')  # Convert to grayscale
-            # Increase contrast
-            enhancer = ImageEnhance.Contrast(img)
-            img = enhancer.enhance(2.0)
-            
-            # Use advanced OCR configuration
-            custom_config = r'--oem 3 --psm 6 -l eng --dpi 400'
-            page_text = pytesseract.image_to_string(img, config=custom_config)
-            
-            # Basic text cleanup
-            page_text = page_text.replace('\x0c', '\n').strip()
-            if page_text:
-                text += page_text + "\n\n"
-        
-        return text.strip()
+            # Enhance image for better OCR
+            enhancer = ImageEnhance.Contrast(image)
+            enhanced_image = enhancer.enhance(2.0)
+            text += pytesseract.image_to_string(enhanced_image)
+
+        return text.strip() or "No text could be extracted from the PDF"
+
     except Exception as e:
-        print(f"OCR processing error: {str(e)}")
+        logging.error(f"Error extracting text from PDF: {str(e)}")
         traceback.print_exc()
-        raise Exception(f"OCR error: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error processing PDF: {str(e)}"
+        )
 
 @app.get("/")
-async def root():
-    return {"message": "CV Critique API is running"}
+def root():
+    return {"message": "CV Analysis Service is running"}
 
 @app.get("/health")
-async def health_check():
+def health_check():
     return {"status": "healthy"}
 
 @app.get("/supported-jobs")
 async def get_supported_jobs():
     """Get list of supported job titles for targeted analysis."""
-    ai_analyzer = AIAnalyzer()
-    return {"supported_jobs": list(ai_analyzer.industry_requirements.keys())}
+    try:
+        ai_analyzer = AIAnalyzer()
+        return {"supported_jobs": list(ai_analyzer.industry_requirements.keys())}
+    except Exception as e:
+        logging.error(f"Error getting supported jobs: {str(e)}")
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error getting supported jobs: {str(e)}"
+        )
 
 @app.post("/analyze")
 async def analyze_cv(
@@ -107,47 +132,61 @@ async def analyze_cv(
         
         # Extract text based on file type
         if cv_file.filename.lower().endswith('.pdf'):
-            text = extract_text_from_pdf_with_ocr(content)
+            text = await extract_text_from_pdf_with_ocr(content)
         elif cv_file.filename.lower().endswith('.docx'):
             doc = Document(io.BytesIO(content))
             text = '\n'.join([paragraph.text for paragraph in doc.paragraphs])
         else:
             raise HTTPException(status_code=400, detail="Unsupported file format. Please upload a PDF or DOCX file.")
 
+        if not text.strip():
+            raise HTTPException(status_code=400, detail="No text could be extracted from the file")
+
         # Initialize AI analyzer
         analyzer = AIAnalyzer()
         
         # Perform analysis
-        analysis_result = await analyzer.analyze_resume(
-            text=text,
-            job_title=job_category,
-            include_industry_insights=include_industry_insights,
-            include_competitive_analysis=include_competitive_analysis,
-            detailed_feedback=detailed_feedback
-        )
+        try:
+            analysis_result = await analyzer.analyze_resume(
+                text=text,
+                job_title=job_category,
+                include_industry_insights=include_industry_insights,
+                include_competitive_analysis=include_competitive_analysis,
+                detailed_feedback=detailed_feedback
+            )
+        except Exception as e:
+            logging.error(f"Error during CV analysis: {str(e)}")
+            traceback.print_exc()
+            raise HTTPException(
+                status_code=500,
+                detail=f"Error analyzing CV: {str(e)}"
+            )
 
         return {
             "status": "success",
             "analysis": analysis_result
         }
 
+    except HTTPException as he:
+        raise he
     except Exception as e:
+        logging.error(f"Unexpected error in analyze_cv: {str(e)}")
         traceback.print_exc()
         raise HTTPException(
             status_code=500,
-            detail=str(e)
+            detail=f"Unexpected error: {str(e)}"
         )
 
 if __name__ == "__main__":
     import uvicorn
-    import os
     
-    # Get port from environment variable
-    port = int(os.getenv("PORT", 10000))
+    port = int(os.getenv("PORT", 8001))
+    host = os.getenv("HOST", "0.0.0.0")
     
-    # Add debug logging
-    logging.basicConfig(level=logging.DEBUG)
-    logger = logging.getLogger(__name__)
-    logger.debug(f"Starting server on port {port}")
-    
-    uvicorn.run("main:app", host="0.0.0.0", port=port, log_level="debug")
+    uvicorn.run(
+        "main:app",
+        host=host,
+        port=port,
+        reload=True,
+        workers=4
+    )

@@ -18,45 +18,15 @@ class AIAnalyzer:
             raise ValueError("OpenAI API key not found in environment variables")
         self.client = AsyncOpenAI(api_key=api_key)
         
-        self.SYSTEM_MESSAGE = """You are an expert resume analyzer. Analyze the resume and provide detailed feedback in the following JSON structure:
-        {
-            "basic_analysis": {
-                "sections_found": {
-                    "contact_info": bool,
-                    "education": bool,
-                    "experience": bool,
-                    "skills": bool
-                },
-                "contact_info": {
-                    "email": string | null,
-                    "phone": string | null,
-                    "linkedin": string | null,
-                    "github": string | null
-                }
-            },
-            "ai_analysis": {
-                "overall_assessment": string,
-                "writing_style": string,
-                "impact_score": number (0-100),
-                "skills_analysis": string,
-                "experience_analysis": string,
-                "education_review": string,
-                "recommendations": [string],
-                "ats_analysis": {
-                    "ats_score": number (0-100),
-                    "detailed_scores": {
-                        "formatting": number (0-100),
-                        "keyword_optimization": number (0-100),
-                        "content_relevance": number (0-100)
-                    },
-                    "feedback": {
-                        "critical": [string],
-                        "important": [string],
-                        "suggestions": [string]
-                    }
-                }
-            }
-        }"""
+        self.SYSTEM_MESSAGE = """You are an expert CV analyzer. You must respond with a valid JSON object using this exact structure:
+{
+    "summary": "Brief overview of the CV",
+    "strengths": ["List of key strengths"],
+    "weaknesses": ["Areas for improvement"],
+    "recommendations": ["Specific recommendations"],
+    "score": "Overall score out of 100"
+}
+Do not include any other text or explanations outside of this JSON structure."""
 
         self.api_url = "https://api.openai.com/v1/chat/completions"
         self.ats_analyzer = ATSAnalyzer()
@@ -116,7 +86,6 @@ class AIAnalyzer:
                 raise ValueError("No text provided for analysis")
 
             print(f"Analyzing resume for job title: {job_title}")
-            print(f"Resume text length: {len(text)}")
             
             messages = [
                 {
@@ -125,17 +94,17 @@ class AIAnalyzer:
                 },
                 {
                     "role": "user",
-                    "content": f"""Analyze this resume for a {job_title} position:
+                    "content": f"""Analyze this resume for a {job_title} position and respond with a JSON object only.
 
+Resume text:
 {text}
 
-Please provide detailed feedback with the following requirements:
+Analysis requirements:
 - Include industry insights: {include_industry_insights}
 - Include competitive analysis: {include_competitive_analysis}
 - Detailed feedback: {detailed_feedback}
 
-IMPORTANT: Respond with valid JSON only.
-"""
+Remember to respond with ONLY a valid JSON object."""
                 }
             ]
 
@@ -144,19 +113,23 @@ IMPORTANT: Respond with valid JSON only.
                     model="gpt-4-1106-preview",
                     messages=messages,
                     temperature=0.7,
-                    max_tokens=2000
+                    max_tokens=2000,
+                    response_format={"type": "json_object"}
                 )
                 
-                # Get the response content
-                content = response.choices[0].message.content
+                content = response.choices[0].message.content.strip()
                 print("OpenAI API Raw Response:", content)
                 
                 try:
+                    if not content.startswith('{'):
+                        raise ValueError("Response is not a JSON object")
                     analysis = json.loads(content)
+                    if not isinstance(analysis, dict):
+                        raise ValueError("Response is not a JSON object")
                 except json.JSONDecodeError as e:
                     print(f"JSON Parse Error: {e}")
                     print(f"Raw content: {content}")
-                    raise ValueError("Failed to parse OpenAI response as JSON")
+                    raise ValueError("OpenAI response was not in valid JSON format")
 
             except Exception as e:
                 print(f"OpenAI API Error: {str(e)}")
@@ -189,18 +162,15 @@ IMPORTANT: Respond with valid JSON only.
 
     async def _get_industry_insights(self, job_category: str) -> Dict:
         messages = [
-            {"role": "system", "content": """You are an expert in industry analysis and career development. Respond with valid JSON only using this structure:
+            {"role": "system", "content": """You are an expert in industry analysis. You must respond with a valid JSON object using this exact structure:
 {
     "trends": ["list of trends"],
     "skills": ["list of skills"],
     "salary_range": "salary information",
     "growth_opportunities": ["list of opportunities"]
-}"""},
-            {"role": "user", "content": f"""Provide industry insights for the {job_category} field, including market trends, key skills in demand, salary insights, and growth opportunities.
-
-IMPORTANT: Respond with valid JSON only.
-"""
-            }
+}
+Do not include any other text or explanations outside of this JSON structure."""},
+            {"role": "user", "content": f"Analyze industry insights for {job_category} and respond with a JSON object only."}
         ]
 
         try:
@@ -208,29 +178,31 @@ IMPORTANT: Respond with valid JSON only.
                 model="gpt-4-1106-preview",
                 messages=messages,
                 temperature=0.7,
-                max_tokens=1000
+                max_tokens=1000,
+                response_format={"type": "json_object"}
             )
-            return json.loads(response.choices[0].message.content)
+            content = response.choices[0].message.content.strip()
+            if not content.startswith('{'):
+                raise ValueError("Response is not a JSON object")
+            return json.loads(content)
         except Exception as e:
             print(f"Error getting industry insights: {e}")
             raise ValueError(f"Failed to get industry insights: {str(e)}")
 
     async def _get_competitive_analysis(self, resume_text: str, job_category: str) -> Dict:
         messages = [
-            {"role": "system", "content": """You are an expert in competitive analysis and career development. Respond with valid JSON only using this structure:
+            {"role": "system", "content": """You are an expert in competitive analysis. You must respond with a valid JSON object using this exact structure:
 {
     "key_strengths": ["list of strengths"],
     "potential_gaps": ["list of gaps"],
     "unique_points": ["list of unique selling points"],
     "improvement_areas": ["list of areas to improve"]
-}"""},
-            {"role": "user", "content": f"""Analyze this resume for competitive positioning in the {job_category} field:
+}
+Do not include any other text or explanations outside of this JSON structure."""},
+            {"role": "user", "content": f"""Analyze competitive positioning for {job_category} and respond with a JSON object only.
 
-{resume_text}
-
-IMPORTANT: Respond with valid JSON only.
-"""
-            }
+Resume text:
+{resume_text}"""}
         ]
 
         try:
@@ -238,9 +210,13 @@ IMPORTANT: Respond with valid JSON only.
                 model="gpt-4-1106-preview",
                 messages=messages,
                 temperature=0.7,
-                max_tokens=1000
+                max_tokens=1000,
+                response_format={"type": "json_object"}
             )
-            return json.loads(response.choices[0].message.content)
+            content = response.choices[0].message.content.strip()
+            if not content.startswith('{'):
+                raise ValueError("Response is not a JSON object")
+            return json.loads(content)
         except Exception as e:
             print(f"Error getting competitive analysis: {e}")
             raise ValueError(f"Failed to get competitive analysis: {str(e)}")

@@ -138,7 +138,7 @@ Remember to respond with ONLY a valid JSON object."""
             # Add ATS analysis if requested
             if detailed_feedback:
                 ats_analyzer = ATSAnalyzer()
-                ats_analysis = ats_analyzer.analyze(text, job_title)
+                ats_analysis = ats_analyzer.analyze_ats_compatibility(text)
                 if 'ats_analysis' not in analysis:
                     analysis['ats_analysis'] = {}
                 analysis['ats_analysis'].update(ats_analysis)

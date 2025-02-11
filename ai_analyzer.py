@@ -135,13 +135,12 @@ Remember to respond with ONLY a valid JSON object."""
                 print(f"OpenAI API Error: {str(e)}")
                 raise ValueError(f"Failed to get analysis from OpenAI: {str(e)}")
 
-            # Add ATS analysis if requested
-            if detailed_feedback:
-                ats_analyzer = ATSAnalyzer()
-                ats_analysis = ats_analyzer.analyze_ats_compatibility(text)
-                if 'ats_analysis' not in analysis:
-                    analysis['ats_analysis'] = {}
-                analysis['ats_analysis'].update(ats_analysis)
+            # Always include ATS analysis
+            ats_analyzer = ATSAnalyzer()
+            ats_analysis = ats_analyzer.analyze_ats_compatibility(text)
+            if 'ats_analysis' not in analysis:
+                analysis['ats_analysis'] = {}
+            analysis['ats_analysis'].update(ats_analysis)
 
             # Add industry insights if requested
             if include_industry_insights:

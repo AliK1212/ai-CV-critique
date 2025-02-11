@@ -17,6 +17,7 @@ from openai import AsyncOpenAI
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
+import redis
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -32,6 +33,14 @@ app = FastAPI(
 limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# Initialize Redis
+redis_client = redis.Redis(
+    host=os.getenv("RENDER_REDIS_HOST", "localhost"),
+    port=int(os.getenv("RENDER_REDIS_PORT", 6379)),
+    password=os.getenv("RENDER_REDIS_PASSWORD", ""),
+    decode_responses=True
+)
 
 # Initialize OpenAI client
 openai_api_key = os.getenv('OPENAI_API_KEY')

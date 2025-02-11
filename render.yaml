@@ -5,22 +5,25 @@ services:
     buildCommand: |
       apt-get update && apt-get install -y tesseract-ocr poppler-utils
       pip install -r requirements.txt
-    startCommand: python main.py
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: PYTHONUNBUFFERED
         value: true
       - key: OPENAI_API_KEY
         sync: false  # This means you'll set it in the Render dashboard
-      - key: DEEPSEEK_API_KEY
-        sync: false  # This means you'll set it in the Render dashboard
       - key: ALLOWED_ORIGINS
-        value: https://frontend-portfolio-aomn.onrender.com  # Replace with your actual frontend URL
+        value: https://frontend-portfolio-aomn.onrender.com,https://deerk-portfolio.onrender.com
       - key: REDIS_HOST
-        value: redis  # This will be updated if using Render's Redis add-on
+        sync: false  # Set this in the Render dashboard after creating Redis instance
       - key: REDIS_PORT
-        value: 6379
+        sync: false  # Set this in the Render dashboard after creating Redis instance
       - key: PORT
         value: 10000
+    autoDeploy: true
+    plan: starter
+    healthCheckPath: /
+    domains:
+      - cv-critique-service.onrender.com
     dependencies:
       - type: redis
         name: cv-critique-redis

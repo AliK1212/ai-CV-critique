@@ -14,8 +14,24 @@ import traceback
 from PIL import ImageEnhance
 import logging
 from openai import AsyncOpenAI
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
-app = FastAPI()
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+app = FastAPI(
+    title="CV Analysis API",
+    description="AI-Powered CV Analysis and Feedback",
+    version="1.0.0"
+)
+
+# Initialize rate limiter
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Initialize OpenAI client
 openai_api_key = os.getenv('OPENAI_API_KEY')
@@ -97,8 +113,10 @@ async def extract_text_from_pdf_with_ocr(pdf_content: bytes) -> str:
         )
 
 @app.get("/")
-def root():
-    return {"message": "CV Analysis Service is running"}
+@limiter.limit("10/minute")
+def root(request: Request):
+    """Health check endpoint."""
+    return {"status": "ok", "message": "CV Analysis Service is running"}
 
 @app.get("/health")
 def health_check():
@@ -119,7 +137,9 @@ async def get_supported_jobs():
         )
 
 @app.post("/analyze")
+@limiter.limit("10/minute")
 async def analyze_cv(
+    request: Request,
     cv_file: UploadFile = File(...),
     job_category: str = Form(...),
     include_industry_insights: bool = Form(False),
